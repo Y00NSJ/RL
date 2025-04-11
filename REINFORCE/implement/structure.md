@@ -1,8 +1,11 @@
 # REINFORCE Algorithm
+*[코드 바로 보기: cartpole_r.ipynb](https://github.com/Y00NSJ/RL/blob/main/REINFORCE/implement/cartpole_r.ipynb)*
 ## 기본 구조
 ### 목적
 Cartpole-v1 from OpenAI Gym
+<br>
 ![cart_pole](https://github.com/user-attachments/assets/30cc97a7-a0b1-4549-b321-301017a0fe1b)
+<br>
 [출처](https://www.gymlibrary.dev/environments/classic_control/cart_pole/)
 
 ### Agent 클래스의 기능 구성
