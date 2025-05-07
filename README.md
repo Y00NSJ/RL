@@ -12,8 +12,8 @@
 |--|--|--|
 |2. 강화학습 개념|![80%](https://progress-bar.xyz/80/?title=progress_&width=200)|-|
 |3. 정책 그래디언트|![100%](https://progress-bar.xyz/100/?title=completed&width=200)|4/9|
-|4. A2C||4/30|
-|5. A3C||5/7|
+|4. A2C|![100%](https://progress-bar.xyz/100/?title=completed&width=200)|4/30|
+|5. A3C|![100%](https://progress-bar.xyz/100/?title=completed&width=200)|5/7|
 |6. PPO||5/14|
 |7. DDPG||5/21|
 |8. SAC||5/28|
