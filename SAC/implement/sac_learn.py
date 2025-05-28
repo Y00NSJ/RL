@@ -135,6 +135,11 @@ class SACagent(object):
         # 에피소드에서 얻은 총 보상값을 저장하기 위한 변수
         self.save_epi_reward = []
 
+        # 자동 온도 튜닝 관련 변수
+        self.log_alpha = tf.Variable(0.0, dtype=tf.float32)
+        self.target_entropy = -np.prod(env.action_space.shape).astype(np.float32)
+        self.alpha_opt = Adam(learning_rate=0.001)
+
 
     ## 행동 샘플링
     def get_action(self, state):
@@ -175,18 +180,31 @@ class SACagent(object):
 
     ## 액터 신경망 학습
     def actor_learn(self, states):
-        with tf.GradientTape() as tape:
+        # Actor 학습
+        with tf.GradientTape() as tape1:
             mu, std = self.actor(states, training=True)
             actions, log_pdfs = self.actor.sample_normal(mu, std)
             log_pdfs = tf.squeeze(log_pdfs, 1)
             soft_q_1 = self.critic_1([states, actions])
             soft_q_2 = self.critic_2([states, actions])
             soft_q = tf.math.minimum(soft_q_1, soft_q_2)
+            current_alpha = tf.exp(self.log_alpha)  # recompute inside tape
+            loss = tf.reduce_mean(current_alpha * log_pdfs - soft_q)
 
-            loss = tf.reduce_mean(self.ALPHA * log_pdfs - soft_q)
-
-        grads = tape.gradient(loss, self.actor.trainable_variables)
+        grads = tape1.gradient(loss, self.actor.trainable_variables)
         self.actor_opt.apply_gradients(zip(grads, self.actor.trainable_variables))
+
+        # Alpha 자동 튜닝
+        with tf.GradientTape() as tape2:
+            tape2.watch(self.log_alpha)
+            mu, std = self.actor(states, training=True)
+            _, log_pdfs_alpha = self.actor.sample_normal(mu, std)
+            log_pdfs_alpha = tf.squeeze(log_pdfs_alpha, 1)
+            current_alpha = tf.exp(self.log_alpha)  # recompute inside tape
+            alpha_loss = -tf.reduce_mean(current_alpha * (log_pdfs_alpha + self.target_entropy))
+
+        alpha_grads = tape2.gradient(alpha_loss, [self.log_alpha])
+        self.alpha_opt.apply_gradients(zip(alpha_grads, [self.log_alpha]))
 
 
     ## 시간차 타깃 계산
@@ -252,7 +270,7 @@ class SACagent(object):
                     target_qs_2 = self.target_critic_2([next_states, next_actions])
                     target_qs = tf.math.minimum(target_qs_1, target_qs_2)
 
-                    target_qi = target_qs - self.ALPHA * next_log_pdf
+                    target_qi = target_qs - tf.exp(self.log_alpha) * next_log_pdf
 
                     # TD 타깃 계산
                     y_i = self.q_target(rewards, target_qi.numpy(), dones)
@@ -279,12 +297,12 @@ class SACagent(object):
 
 
             # 에피소드마다 신경망 파라미터를 파일에 저장
-            self.actor.save_weights("./save_weights/alpha01/pendulum_actor_2q.h5")
-            self.critic_1.save_weights("./save_weights/alpha01/pendulum_critic_12q.h5")
-            self.critic_2.save_weights("./save_weights/alpha01/pendulum_critic_22q.h5")
+            self.actor.save_weights("./save_weights/auto/pendulum_actor_2q.h5")
+            self.critic_1.save_weights("./save_weights/auto/pendulum_critic_12q.h5")
+            self.critic_2.save_weights("./save_weights/auto/pendulum_critic_22q.h5")
 
         # 학습이 끝난 후, 누적 보상값 저장
-        np.savetxt('./save_weights/pendulum_epi_reward_alpha01.txt', self.save_epi_reward)
+        np.savetxt('./save_weights/pendulum_epi_reward_auto_alpha.txt', self.save_epi_reward)
         print(self.save_epi_reward)
 
 
